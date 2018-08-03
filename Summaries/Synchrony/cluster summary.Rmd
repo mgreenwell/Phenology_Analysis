@@ -1,0 +1,471 @@
+---
+title: "Cluster Summary"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Require the following packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(gridExtra)
+```
+
+Load in data.
+growth.rates. csv has the standardised observations (tr0obs) for each species for the years  1976-2014 (Not all species start in 1976.). col.ind.prev.year is the tr0obs value for the previous year. Growth.rate.dif (differential) is the tr0obs value minus the previous year's value. It is therefore a measure of the difference in population growth rate year to year.
+```{r}
+growth.rate <- read.csv(
+  "C:\\Users\\dp005352\\Dropbox\\PhD\\BMS_Data_Analysis\\Outputs\\growth.rates.csv", 
+  header = T
+  )
+```
+
+Select appropriate rows from the data.
+Only require the species number, the year and the growth.rate.dif
+```{r}
+  cluster <- select(growth.rate, species, year, growth.rate.dif)
+```
+
+species.codes is a list of all the species numbers matched with the species common and Latin names
+```{r}
+codes <- read.csv(
+  "C://Users//dp005352//Dropbox//PhD//BMS_Data_Analysis//Synchrony_Data//species_codes.csv", 
+  header = T
+  )
+```
+
+Merge the two data sets together so that each species has a name and number
+```{r}
+cluster <- merge(cluster, codes, by.x = "species", by.y = "species.code")
+```
+
+Remove unnecessary columns. Only need growth rate differential, year and name.
+```{r}
+cluster <- select(cluster, growth.rate.dif, year, common.name)
+```
+
+Create long form table with each species as its own column and remove year column as no longer required.
+```{r}
+cluster <- spread(cluster, common.name, growth.rate.dif)
+cluster <- select(cluster, -year)
+```
+
+Create a correlation matrix. cor function correlates each column with every other column in the data set. For this reason we removed the year column.
+```{r}
+corcluster <- cor(cluster, use = "pairwise.complete.obs")
+```
+
+Times data set by minus 1 as need to look at similarity rather than distance.
+```{r}
+corcluster <- corcluster * -1
+```
+
+Create dendrogram for correlations.
+The algorithm works as follows:
+Put each data point in its own cluster.
+Identify the closest two clusters and combine them into one cluster.
+Repeat the above step till all the data points are in a single cluster.
+```{r, fig.width = 12, fig.height = 10}
+cluster.plot <- hclust(as.dist(corcluster))
+plot(cluster.plot)
+```
+
+Next stage is to plot growth rate differential vs year for each species, split into clusters using the clusters shown in the dendrogram.
+To do this requires adding names to species code.
+
+```{r}
+growth.rate <- merge(growth.rate, codes, by.x = "species", by.y = "species.code")
+```
+
+Remove unnecessary columns. Only need growth rate differential, year and name
+
+```{r}
+growth.rate <-
+  select(growth.rate, growth.rate.dif, year, common.name, species)
+```
+
+Dendrogram can be split initially into four large clusters
+Each set of code creates a plot for an individual cluster.Graphs brought together using grid.arrange
+
+```{r, warning = FALSE, fig.width = 12, fig.height = 10}
+cluster4.1 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      #"Clouded yellow", #"Painted lady",
+      "Small white", "Green-veined white", "Large white",
+      "Lulworth skipper", "Wall brown", "Ringlet", "Speckled wood"
+    )
+  )
+
+clusterplot4.1 <-
+  ggplot(cluster4.1, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name)
+  )) + 
+  geom_line() + 
+  scale_x_continuous(breaks = seq(1975, 2015, 5))
+
+
+cluster4.2 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Purple hairstreak", "Silver-spotted skipper",
+      "Duke of Burg. Frit.", "Orange tip", "Swallowtail",
+      "Wood white", "White-letter hairstreak", "White admiral",
+      "Brown argus", "Common blue", "Black hairstreak",
+      "Large skipper", "Brimstone", "Peacock",
+      "Dark green fritillary", "Small tortoiseshell"
+    )
+  )
+
+clusterplot4.2 <-
+  ggplot(cluster4.2, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name)
+  )) + 
+  geom_line() + 
+  scale_x_continuous(breaks = seq(1975, 2015, 5))
+
+
+cluster4.3 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Brown hairstreak", "Marbled white", "Gatekeeper",
+      "Small skipper", "Essex skipper", "Meadow brown",
+      "Adonis blues", "Chalk-hill blue", "Small copper",
+      "Small heath", "Comma", "Silver-washed fritillary",
+      "Northern brown argus", "Grayling", "Marsh fritillary",
+      "Red admiral", "Silver-studded blue", "Large heath",
+      "Small pearl-bordered fritillary", "Heath fritillary",
+      "High brown fritillary"
+    )
+  )
+
+clusterplot4.3 <-
+  ggplot(cluster4.3, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name)
+  )) + 
+  geom_line() + 
+  scale_x_continuous(breaks = seq(1975, 2015, 5))
+
+
+cluster4.4 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+     "Holly blue", "Grizzled skipper",
+     "Pearl-bordered fritillary", #"Chequered skipper",
+     "Dingy skipper", "Green hairstreak",
+     "Scotch argus", "Small blue"
+    )
+  )
+
+clusterplot4.4 <-
+  ggplot(cluster4.4, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name)
+  )) + 
+  geom_line() + 
+  scale_x_continuous(breaks = seq(1975, 2015, 5))
+
+
+grid.arrange(clusterplot4.1,
+             clusterplot4.2,
+             clusterplot4.3,
+             clusterplot4.4,
+             ncol = 2,
+             nrow = 2)
+
+```
+
+Can then be split into 11 clusters.
+```{r, echo = FALSE, warning = FALSE, fig.width = 12, fig.height = 18}
+cluster11.1 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Clouded yellow",
+      "Painted lady"
+    )
+  )
+
+clusterplot11.1 <-
+  ggplot(cluster11.1, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 2
+
+
+cluster11.2 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Small white",
+      "Green-veined white",
+      "Large white",
+      "Lulworth skipper",
+      "Wall brown",
+      "Ringlet",
+      "Speckled wood"
+    )
+  )
+
+clusterplot11.2 <-
+  ggplot(cluster11.2, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 3
+
+
+cluster11.3 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Purple hairstreak",
+      "Silver-spotted skipper",
+      "Duke of Burg. Frit.",
+      "Orange tip" 
+    )
+  )
+
+clusterplot11.3 <-
+  ggplot(cluster11.3, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+# Cluster 4
+
+
+cluster11.4 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Swallowtail",
+      "Wood white",
+      "White-letter hairstreak",
+      "White admiral",
+      "Brown argus",
+      "Common blue",
+      "Black hairstreak",
+      "Large skipper",
+      "Brimstone",
+      "Peacock",
+      "Dark green fritillary",
+      "Small tortoiseshell"
+    )
+  )
+
+clusterplot11.4 <-
+  ggplot(cluster11.4, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+# Cluster 5
+
+
+cluster11.5 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Brown hairstreak"
+    )
+  )
+
+clusterplot11.5 <-
+  ggplot(cluster11.5, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 6
+
+
+cluster11.6 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Marbled white",
+      "Gatekeeper",
+      "Small skipper",
+      "Essex skipper",
+      "Meadow brown"
+    )
+  )
+
+clusterplot11.6 <-
+  ggplot(cluster11.6, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 7
+
+
+cluster11.7 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Adonis blues",
+      "Chalk-hill blue",
+      "Small copper",
+      "Small heath",
+      "Comma",
+      "Silver-washed fritillary",
+      "Northern brown argus",
+      "Grayling",
+      "Marsh fritillary"
+    )
+  )
+
+clusterplot11.7 <-
+  ggplot(cluster11.7, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 8
+
+
+cluster11.8 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Red admiral",
+      "Silver-studded blue",
+      "Large heath",
+      "Small pearl-bordered fritillary",
+      "Heath fritillary",
+      "High brown fritillary"
+    )
+  )
+
+clusterplot11.8 <-
+  ggplot(cluster11.8, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 9
+
+
+cluster11.9 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Holly blue",
+      "Grizzled skipper",
+      "Pearl-bordered fritillary"
+    )
+  )
+
+clusterplot11.9 <-
+  ggplot(cluster11.9, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+# Cluster 10
+
+
+cluster11.10 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Chequered skipper",
+      "Dingy skipper",
+      "Green hairstreak"
+    )
+  )
+
+clusterplot11.10 <-
+  ggplot(cluster11.10, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+# Cluster 11
+
+cluster11.11 <-
+  growth.rate %>% filter(
+    common.name %in% c(
+      "Scotch argus",
+      "Small blue"
+    )
+    )
+
+clusterplot11.11 <-
+  ggplot(cluster11.11, aes(
+    x = year,
+    y = growth.rate.dif,
+    colour = factor(common.name))) + 
+  geom_line() + 
+  scale_x_continuous(name = "Year", breaks = seq(1975, 2015, 5)) +
+  scale_y_continuous(name = "Growth Rate Differential") + 
+  theme(legend.title=element_blank())
+
+
+grid.arrange(
+  clusterplot11.1,
+  clusterplot11.2,
+  clusterplot11.3,
+  clusterplot11.4,
+  clusterplot11.5,
+  clusterplot11.6,
+  clusterplot11.7,
+  clusterplot11.8,
+  clusterplot11.9,
+  clusterplot11.10,
+  clusterplot11.11,
+  ncol = 2,
+  nrow = 6
+)
+
